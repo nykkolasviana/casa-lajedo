@@ -271,10 +271,13 @@ function galeria() {
   dialogo.addEventListener("close", () => botoes[atual].focus());
 }
 
-/* Formulário: monta a mensagem e abre o WhatsApp */
+/* Formulário: monta a mensagem no link do botão "Enviar pelo WhatsApp".
+   O envio é um link de verdade, não window.open: janelas abertas por script são bloqueadas
+   em páginas isoladas (sandbox) e em navegadores embutidos, como os do Instagram e do Facebook. */
 function formulario() {
   const form = document.getElementById("form-visita");
-  if (!form) return;
+  const enviar = document.getElementById("form-enviar");
+  if (!form || !enviar) return;
   const status = document.getElementById("form-status");
   const campoNome = form.elements.nome;
   const erroNome = document.getElementById("nome-erro");
@@ -283,34 +286,45 @@ function formulario() {
     campoNome.removeAttribute("aria-invalid");
     erroNome.hidden = true;
   };
-  campoNome.addEventListener("input", () => {
-    if (campoNome.value.trim()) limparErro();
-  });
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  const montarLink = () => {
     const dados = new FormData(form);
     const nome = String(dados.get("nome") || "").trim();
+    const linhas = [`Olá, ${CONFIG.contato}! Tenho interesse na Casa Palmeiras, em Lajedo-PE.`];
+    if (nome) linhas.push(`Nome: ${nome}`);
+    linhas.push(
+      `Como pretendo comprar: ${dados.get("pagamento")}`,
+      `Melhor período para visita: ${dados.get("periodo")}`
+    );
+    const mensagem = String(dados.get("mensagem") || "").trim();
+    if (mensagem) linhas.push(`Mensagem: ${mensagem}`);
+    enviar.href = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(linhas.join("\n"))}`;
+    return nome;
+  };
 
-    if (!nome) {
+  form.addEventListener("input", () => {
+    montarLink();
+    if (campoNome.value.trim()) limparErro();
+  });
+  form.addEventListener("change", montarLink);
+
+  enviar.addEventListener("click", (e) => {
+    if (!montarLink()) {
+      e.preventDefault();
       campoNome.setAttribute("aria-invalid", "true");
       erroNome.hidden = false;
       campoNome.focus();
       return;
     }
     limparErro();
-
-    const linhas = [
-      `Olá, ${CONFIG.contato}! Tenho interesse na Casa Palmeiras, em Lajedo-PE.`,
-      `Nome: ${nome}`,
-      `Como pretendo comprar: ${dados.get("pagamento")}`,
-      `Melhor período para visita: ${dados.get("periodo")}`,
-    ];
-    const mensagem = String(dados.get("mensagem") || "").trim();
-    if (mensagem) linhas.push(`Mensagem: ${mensagem}`);
-
     status.textContent = `Abrindo o WhatsApp… Se não abrir, chame no ${CONFIG.telefoneExibicao}.`;
-    const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(linhas.join("\n"))}`;
-    window.open(url, "_blank", "noopener");
   });
+
+  // Enter no campo de nome também envia, pelo mesmo link
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    enviar.click();
+  });
+
+  montarLink();
 }
