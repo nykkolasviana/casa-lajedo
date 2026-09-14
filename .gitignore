@@ -1,0 +1,17 @@
+# Documento interno (fica só no computador)
+GUIA.md
+
+# Fotos originais em alta resolução
+fotos-originais/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Sistema e editor
+.DS_Store
+Thumbs.db
+.vscode/
+.claude/
